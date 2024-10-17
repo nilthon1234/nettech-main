@@ -1,10 +1,13 @@
 package com.cibertec.netTech.controllers;
 
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +29,8 @@ import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 
+import javax.sql.DataSource;
+
 @Controller
 @RequestMapping("/products")
 public class ProductController {
@@ -34,6 +39,11 @@ public class ProductController {
     private ProductService productService;
     @Autowired
     private CategoryService categoryService;
+
+    @Autowired
+    private ResourceLoader resourceLoader;
+    @Autowired
+    private DataSource dataSource;
 
     @GetMapping("/edit/{productId}")
     public String showProductDetails(@PathVariable Long productId, Model model) {
@@ -57,35 +67,19 @@ public class ProductController {
     }
 
     // Descargar reporte en PDF
-    @GetMapping("/reporte")
-    public ResponseEntity<StreamingResponseBody> descargarReporte() throws JRException {
-        // Cargar el archivo .jasper desde la carpeta de recursos
-        InputStream reportStream = getClass().getResourceAsStream("/static/report/Cherry.jasper");
-        
-        // Verificar que el archivo .jasper exista
-        if (reportStream == null) {
-            throw new RuntimeException("No se pudo encontrar el archivo de reporte.");
+    //reportes
+    @GetMapping("/reporteropa")
+    public void generarPDFCliente(HttpServletResponse response) {
+        response.setHeader("Content-Disposition", "inline;");
+        response.setContentType("application/pdf");
+        try {
+            String ru = resourceLoader.getResource("classpath:reporte/reporte_ropas.jasper").getURI().getPath();
+            JasperPrint jasperPrint = JasperFillManager.fillReport(ru,null, dataSource.getConnection());
+            OutputStream outStream = response.getOutputStream();
+            JasperExportManager.exportReportToPdfStream(jasperPrint, outStream);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        // Llenar el reporte sin necesidad de pasarle un DataSource si el reporte ya tiene la consulta
-        JasperPrint jasperPrint = JasperFillManager.fillReport(reportStream, null);
-
-        // Streaming para la descarga del PDF
-        StreamingResponseBody stream = outputStream -> {
-            try {
-                JasperExportManager.exportReportToPdfStream(jasperPrint, outputStream);
-            } catch (JRException e) {
-                e.printStackTrace();
-                throw new RuntimeException("Error al exportar el reporte a PDF: " + e.getMessage());
-            }
-        };
-
-        // Configurar las cabeceras para la descarga del archivo
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_productos.pdf");
-
-        // Devolver el PDF como respuesta
-        return new ResponseEntity<>(stream, headers, HttpStatus.OK);
     }
 
 }
