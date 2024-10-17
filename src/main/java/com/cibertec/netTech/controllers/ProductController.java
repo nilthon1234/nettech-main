@@ -68,12 +68,12 @@ public class ProductController {
 
     // Descargar reporte en PDF
     //reportes
-    @GetMapping("/reporteropa")
+    @GetMapping("/reporte")
     public void generarPDFCliente(HttpServletResponse response) {
         response.setHeader("Content-Disposition", "inline;");
         response.setContentType("application/pdf");
         try {
-            String ru = resourceLoader.getResource("classpath:reporte/reporte_ropas.jasper").getURI().getPath();
+            String ru = resourceLoader.getResource("classpath:static/report/produc.jasper").getURI().getPath();
             JasperPrint jasperPrint = JasperFillManager.fillReport(ru,null, dataSource.getConnection());
             OutputStream outStream = response.getOutputStream();
             JasperExportManager.exportReportToPdfStream(jasperPrint, outStream);
